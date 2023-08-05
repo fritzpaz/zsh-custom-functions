@@ -1,7 +1,22 @@
 zshrc() {
   case "$1" in
     "code" | "edit")
-      code "$HOME/.zshrc"
+      local target=${2:-""}
+      case "$target" in
+        "")
+          cd "$HOME/code/zshrc"
+          code "$HOME/.zshrc"
+          ;;
+        "public" | "private")
+          cd "$HOME/code/zshrc"
+          code "$HOME/code/zshrc"
+          code "$HOME/.zshrc"
+          ;;
+        *)
+          echo "Invalid target for git. Available targets: public, private\n"
+          return 1
+          ;;
+      esac
       ;;
     "source" | "reload")
       source "$HOME/.zshrc"
