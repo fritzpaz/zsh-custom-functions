@@ -1,0 +1,10 @@
+alias awggit=awsconfig
+alias awscredentials=awsconfig
+alias awslogin=awsconfig
+
+# Bitwarden
+alias bitwarden="( /mnt/c/Program\ Files/Bitwarden/Bitwarden.exe > /dev/null 2>&1 & )"
+alias passwords="bitwarden"
+
+# GPT
+alias gpt="druid gpt"
