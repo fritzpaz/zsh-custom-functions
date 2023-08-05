@@ -7,4 +7,4 @@ alias bitwarden="( /mnt/c/Program\ Files/Bitwarden/Bitwarden.exe > /dev/null 2>&
 alias passwords="bitwarden"
 
 # GPT
-alias gpt="druid gpt"
+alias gpt="windows_chrome \"\" \"https://chat.openai.com/?model=gpt-4\""
