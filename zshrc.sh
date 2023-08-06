@@ -1,27 +1,27 @@
 zshrc() {
   case "$1" in
     "code" | "edit")
-      local target=${2:-""}
-      case "$target" in
-        "")
-          cd "$HOME/code/zshrc"
-          code "$HOME/.zshrc"
-          ;;
-        "public" | "private")
-          cd "$HOME/code/zshrc"
-          code "$HOME/code/zshrc"
-          code "$HOME/.zshrc"
-          ;;
-        *)
-          echo "Invalid target for git. Available targets: public, private\n"
-          return 1
-          ;;
-      esac
+      cd "$HOME/code/zshrc"
+      code "$HOME/code/zshrc"
+      code "$HOME/.zshrc"
       ;;
-    "source" | "reload")
-      source "$HOME/.zshrc"
-      echo "Zsh configuration reloaded."
-      ;;
+  "source" | "reload")
+    length=50
+    time_to_load=0.2
+    sleep_time=$(python -c "print($time_to_load/$length/1000)")
+    echo -n "[$(printf "%-${length}s")] 0%" # Initial empty bar and 0%
+    for i in $(seq 1 $length); do
+      sleep $sleep_time
+      # Create a variable that contains the correct number of '#' characters
+      bar=$(printf "%-${i}s" | tr ' ' '=')
+      # Move the cursor back 14 spaces (10 for '#' + 3 for percentage + 1 for space), then print the bar, then print the progress percent
+      percent=$(python -c "print(int(($i/$length)*100))")
+      printf "\r[%-${length}s] %3d%%" "$bar" "$percent"
+    done
+    echo "\n"
+    ;;
+
+
     "cd")
       local target=${2:-""}
       case "$target" in
