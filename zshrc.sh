@@ -6,6 +6,7 @@ zshrc() {
       code "$HOME/.zshrc"
       ;;
   "source" | "reload")
+    source "$HOME/.zshrc"
     length=50
     time_to_load=0.2
     sleep_time=$(python -c "print($time_to_load/$length/1000)")

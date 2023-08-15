@@ -1,0 +1,17 @@
+#!/usr/bin/expect -f
+
+set timeout 10
+set profile_name [lindex $argv 0]
+spawn aws sso login --profile $profile_name
+
+expect {
+    "open the following URL:" {
+        set sso_output $expect_out(buffer)
+        send_user "$sso_output"
+        exit
+    }
+    timeout {
+        send_user "Timed out while waiting for output!"
+        exit 1
+    }
+}
