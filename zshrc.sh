@@ -1,9 +1,31 @@
 zshrc() {
   case "$1" in
     "code" | "edit")
-      cd "$HOME/code/zshrc"
-      code "$HOME/code/zshrc"
-      code "$HOME/.zshrc"
+      local target=${2:-""}
+      case "$target" in
+        "public")
+          cd $HOME/code/zshrc/zshrc_public
+          code "$HOME/code/zshrc/zshrc_public"
+          ;;
+        "private")
+          cd $HOME/code/zshrc/zshrc_private
+          code "$HOME/code/zshrc/zshrc_private"
+          ;;
+        "p10k")
+          cd "$HOME/code/zshrc"
+          code "$HOME/code/zshrc"
+          code "$HOME/.p10k.zsh"
+          ;;
+        "" | "zshrc")
+          cd "$HOME/code/zshrc"
+          code "$HOME/code/zshrc"
+          code "$HOME/.zshrc"
+          ;;
+        *)
+          echo "Invalid target for cd. Available targets: public, private, zshrc, p10k\n"
+          return 1
+          ;;
+      esac
       ;;
 
     "source" | "reload")
@@ -77,14 +99,7 @@ zshrc() {
           return 1
           ;;
       esac
-      ;;
-
-    "p10k")
-      cd "$HOME/code/zshrc"
-      code "$HOME/code/zshrc"
-      code "$HOME/.p10k.zsh"
-      ;;
-    
+      ;;    
     *)
       echo "Available commands:"
       echo "zshrc code | edit           : Opens the .zshrc file in VS Code."

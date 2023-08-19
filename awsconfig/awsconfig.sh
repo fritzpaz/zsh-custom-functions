@@ -1,44 +1,88 @@
-line_width=77
+# line_width=50
+
+# function check_aws_sso_session() {
+#   # Check AWS SSO session validity
+#   if aws sts get-caller-identity --output json >/dev/null 2>&1; then
+#     # Determine the size of our content
+#     content="\033[38;5;208m$AWS_PROFILE ❯\033[0m Active AWS SSO session."
+#     text_width=$((${#AWS_PROFILE} + 28))
+
+#     # Calculate padding
+#     padding=$((line_width - text_width))
+#     if ((padding % 2 == 0)); then
+#       padding=$((padding / 2))
+#     else
+#       padding=$(((padding) / 2))
+#       line_width=$((line_width - 1))
+#     fi
+
+#     # Generate the box
+#     echo -e "\033[1;36m┌$(printf '─%.0s' $(seq 1 $((line_width - 2))))┐\033[0m"
+#     echo -e "\033[1;36m│\033[0m$(printf ' %.0s' $(seq 1 $padding))$content$(printf ' %.0s' $(seq 1 $padding))\033[1;36m│\033[0m"
+#   else
+#     content="\033[38;5;208m$AWS_PROFILE ❯\033[0m Invalid AWS SSO session."
+#     text_width=$((${#AWS_PROFILE} + 28))
+
+#     # Calculate padding
+#     padding=$((line_width - text_width))
+#     if ((padding % 2 == 0)); then
+#       padding=$((padding / 2))
+#       line_width=$((line_width + 1))
+#     else
+#       padding=$(((padding) / 2))
+#     fi
+
+#     # Generate the box
+#     echo -e "\033[1;36m┌$(printf '─%.0s' $(seq 1 $((line_width - 2))))┐\033[0m"
+#     echo -e "\033[1;36m│\033[0m$(printf ' %.0s' $(seq 1 $padding))$content$(printf ' %.0s' $(seq 1 $padding))\033[1;36m│\033[0m"
+#   fi
+  
+#   echo -e "\033[1;36m└$(printf '─%.0s' $(seq 1 $((line_width - 2))))┘\033[0m"
+# }
+
+
+# function initialize_aws_profile() {
+#   local aws_credentials_file="$HOME/.aws/credentials"
+
+#   # Check if the default profile exists in the credentials file
+#   local is_default_exists=$(grep "^\[default\]" "$aws_credentials_file")
+
+#   if [ -n "$is_default_exists" ]; then
+#     # If default profile exists, then set AWS_PROFILE to "default".
+#     export AWS_PROFILE=default
+#   else
+#     # If default does not exist, then set AWS_PROFILE to the value in [last-sso]
+#     local last_sso_profile=$(grep -A1 "^\[last-sso\]" "$aws_credentials_file" | grep "profile_name" | cut -d '=' -f 2 | tr -d '[:space:]')
+#     if [ -n "$last_sso_profile" ]; then
+#       export AWS_PROFILE="$last_sso_profile"
+
+#       # Check if the AWS SSO session is active
+#       if ! check_aws_sso_session; then
+#         # If the session is not active, ask the user if they want to login
+#         echo -e "\033[1;36m│\033[0m ℹ️  Tip: Run \033[1;96mawsconfig login\033[0m to authenticate.  \033[1;36m│\033[0m"
+#         echo -e "\033[1;36m└────────────────────────────────────────────────┘\033[0m"
+#       fi
+#     else
+#       return 1
+#     fi
+#   fi
+# }
+
 
 function check_aws_sso_session() {
   # Check AWS SSO session validity
   if aws sts get-caller-identity --output json >/dev/null 2>&1; then
-    # Determine the size of our content
-    content="\033[38;5;208m$AWS_PROFILE ❯\033[0m Active AWS SSO session."
-    text_width=$((${#AWS_PROFILE} + 28))
-
-    # Calculate padding
-    padding=$((line_width - text_width))
-    if ((padding % 2 == 0)); then
-      padding=$((padding / 2))
-    else
-      padding=$(((padding) / 2))
-      line_width=$((line_width - 1))
-    fi
-
-    # Generate the box
-    echo -e "\033[1;36m┌$(printf '─%.0s' $(seq 1 $((line_width - 2))))┐\033[0m"
-    echo -e "\033[1;36m│\033[0m$(printf ' %.0s' $(seq 1 $padding))$content$(printf ' %.0s' $(seq 1 $padding))\033[1;36m│\033[0m"
+    content="\e[38;5;234m\uE0B6\e[48;5;234m\e[38;5;208m  $AWS_PROFILE ❯  \e[38;5;255mAWS SSO session \e[38;5;82mactive \e[49m\e[38;5;234m\uE0B4\e[0m"
+    echo -e "$content"
+    return 0
   else
-    content="\033[38;5;208m$AWS_PROFILE ❯\033[0m Invalid AWS SSO session."
-    text_width=$((${#AWS_PROFILE} + 28))
-
-    # Calculate padding
-    padding=$((line_width - text_width))
-    if ((padding % 2 == 0)); then
-      padding=$((padding / 2))
-      line_width=$((line_width + 1))
-    else
-      padding=$(((padding) / 2))
-    fi
-
-    # Generate the box
-    echo -e "\033[1;36m┌$(printf '─%.0s' $(seq 1 $((line_width - 2))))┐\033[0m"
-    echo -e "\033[1;36m│\033[0m$(printf ' %.0s' $(seq 1 $padding))$content$(printf ' %.0s' $(seq 1 $padding))\033[1;36m│\033[0m"
+    content="\e[38;5;234m\uE0B6\e[48;5;234m\e[38;5;208m  $AWS_PROFILE ❯  \e[38;5;255mAWS SSO session \e[38;5;196minvalid \e[49m\e[38;5;234m\uE0B4\e[0m"
+    echo -e "$content"
+    return 1
   fi
-  
-  echo -e "\033[1;36m└$(printf '─%.0s' $(seq 1 $((line_width - 2))))┘\033[0m"
 }
+
+
 
 
 function initialize_aws_profile() {
@@ -58,10 +102,10 @@ function initialize_aws_profile() {
 
       # Check if the AWS SSO session is active
       if ! check_aws_sso_session; then
-        # If the session is not active, ask the user if they want to login
-        echo -e "\033[1;36m│\033[0m ℹ️  Tip: Run \033[1;96mawsconfig login\033[0m to authenticate.  \033[1;36m│\033[0m"
-        echo -e "\033[1;36m└────────────────────────────────────────────────┘\033[0m"
+        # If the session is not active, inform the user to run the login command
+        echo -e " ℹ️  \033[96mawsconfig login"
       fi
+      echo ""
     else
       return 1
     fi
