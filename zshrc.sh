@@ -5,23 +5,44 @@ zshrc() {
       code "$HOME/code/zshrc"
       code "$HOME/.zshrc"
       ;;
-  "source" | "reload")
-    source "$HOME/.zshrc"
-    length=50
-    time_to_load=0.2
-    sleep_time=$(python -c "print($time_to_load/$length/1000)")
-    echo -n "[$(printf "%-${length}s")] 0%" # Initial empty bar and 0%
-    for i in $(seq 1 $length); do
-      sleep $sleep_time
-      # Create a variable that contains the correct number of '#' characters
-      bar=$(printf "%-${i}s" | tr ' ' '=')
-      # Move the cursor back 14 spaces (10 for '#' + 3 for percentage + 1 for space), then print the bar, then print the progress percent
-      percent=$(python -c "print(int(($i/$length)*100))")
-      printf "\r[%-${length}s] %3d%%" "$bar" "$percent"
-    done
-    echo "\n"
-    ;;
 
+    "source" | "reload")
+      source "$HOME/.zshrc"
+      length=48
+      time_to_load=0.01
+      
+      # Calculating total iterations
+      total_iterations=$(echo "$time_to_load*1000" | awk '{printf "%d", $1}')
+      
+      # Colors
+      COLOR_BLUE="\033[1;36m"
+      COLOR_GREEN="\033[1;32m"
+      COLOR_RESET="\033[0m"
+
+      echo -n -e "${COLOR_BLUE}[$(printf "%-${length}s" ' ')] 0%${COLOR_RESET}" # Initial empty bar and 0%
+
+      for i in $(seq 1 $length); do
+          sleep $(echo "$time_to_load/$length" | awk '{printf "%.5f", $1}')
+          
+          # Construct bar string using loop
+          bar=""
+          for j in $(seq 1 $i); do
+              bar="${bar}▒"
+          done
+          
+          # Calculate percentage
+          percent=$(( (i * 100) / length ))
+          
+          # Calculate the number of spaces needed after the bar
+          spaces_needed=$(( length - i ))
+          for j in $(seq 1 $spaces_needed); do
+              bar="${bar} "
+          done
+
+          # Print the progress bar with color
+          printf "\r${COLOR_BLUE}[${COLOR_RESET}${COLOR_GREEN}%s${COLOR_BLUE}]${COLOR_RESET}${COLOR_GREEN} %3d%%${COLOR_RESET}" "$bar" "$percent"
+      done
+      ;;
 
     "cd")
       local target=${2:-""}
@@ -41,6 +62,7 @@ zshrc() {
           ;;
       esac
       ;;
+
     "git")
       local target=${2:-""}
       case "$target" in
@@ -56,11 +78,21 @@ zshrc() {
           ;;
       esac
       ;;
+
+    "p10k")
+      cd "$HOME/code/zshrc"
+      code "$HOME/code/zshrc"
+      code "$HOME/.p10k.zsh"
+      ;;
+    
     *)
       echo "Available commands:"
       echo "zshrc code | edit           : Opens the .zshrc file in VS Code."
-      echo "zshrc source | reload       : Reloads the .zshrc file.\n"
+      echo "zshrc cd [public|private]   : Changes directory to the public or private zshrc files."
+      echo "zshrc source | reload       : Reloads the .zshrc file."
       echo "zshrc git [public|private]  : Opens the git repository for the public or private zshrc files."
+      echo "zshrc p10k                  : Opens the .p10k.zsh file in VS Code."
+      echo ""
       ;;
   esac
 }

@@ -1,13 +1,45 @@
+line_width=77
+
 function check_aws_sso_session() {
-  # Attempt to retrieve the caller identity
-  if aws sts get-caller-identity --profile "$AWS_PROFILE" >/dev/null 2>&1; then
-    echo "[ $AWS_PROFILE ]: Active AWS SSO session."
-    return 0
+  # Check AWS SSO session validity
+  if aws sts get-caller-identity --output json >/dev/null 2>&1; then
+    # Determine the size of our content
+    content="\033[38;5;208m$AWS_PROFILE ❯\033[0m Active AWS SSO session."
+    text_width=$((${#AWS_PROFILE} + 28))
+
+    # Calculate padding
+    padding=$((line_width - text_width))
+    if ((padding % 2 == 0)); then
+      padding=$((padding / 2))
+    else
+      padding=$(((padding) / 2))
+      line_width=$((line_width - 1))
+    fi
+
+    # Generate the box
+    echo -e "\033[1;36m┌$(printf '─%.0s' $(seq 1 $((line_width - 2))))┐\033[0m"
+    echo -e "\033[1;36m│\033[0m$(printf ' %.0s' $(seq 1 $padding))$content$(printf ' %.0s' $(seq 1 $padding))\033[1;36m│\033[0m"
   else
-    echo "[ $AWS_PROFILE ]: Invalid AWS SSO session."
-    return 1
+    content="\033[38;5;208m$AWS_PROFILE ❯\033[0m Invalid AWS SSO session."
+    text_width=$((${#AWS_PROFILE} + 28))
+
+    # Calculate padding
+    padding=$((line_width - text_width))
+    if ((padding % 2 == 0)); then
+      padding=$((padding / 2))
+      line_width=$((line_width + 1))
+    else
+      padding=$(((padding) / 2))
+    fi
+
+    # Generate the box
+    echo -e "\033[1;36m┌$(printf '─%.0s' $(seq 1 $((line_width - 2))))┐\033[0m"
+    echo -e "\033[1;36m│\033[0m$(printf ' %.0s' $(seq 1 $padding))$content$(printf ' %.0s' $(seq 1 $padding))\033[1;36m│\033[0m"
   fi
+  
+  echo -e "\033[1;36m└$(printf '─%.0s' $(seq 1 $((line_width - 2))))┘\033[0m"
 }
+
 
 function initialize_aws_profile() {
   local aws_credentials_file="$HOME/.aws/credentials"
@@ -27,15 +59,10 @@ function initialize_aws_profile() {
       # Check if the AWS SSO session is active
       if ! check_aws_sso_session; then
         # If the session is not active, ask the user if they want to login
-        echo "Do you want to login to the current profile ($AWS_PROFILE)? [y/n]: "
-        read user_input
-
-        if [[ "$user_input" == "y" || "$user_input" == "Y" ]]; then
-          awsconfig login
-        fi
+        echo -e "\033[1;36m│\033[0m ℹ️  Tip: Run \033[1;96mawsconfig login\033[0m to authenticate.  \033[1;36m│\033[0m"
+        echo -e "\033[1;36m└────────────────────────────────────────────────┘\033[0m"
       fi
     else
-      echo "No default or last SSO profile found!"
       return 1
     fi
   fi
@@ -45,6 +72,7 @@ function initialize_aws_profile() {
 function awsconfig() {
   local aws_credentials_file="$HOME/.aws/credentials"
   local aws_config_file="$HOME/.aws/config"
+  local terragrunt_login_profile="bubbe-dev"
 
   if [ "$#" -lt 1 ]; then
     echo "Usage: awsconfig <command> [options]"
@@ -54,6 +82,8 @@ function awsconfig() {
     echo "  list                   List available AWS IAM and SSO profiles."
     echo "  show <profile>         Display details for a specified IAM or SSO profile."
     echo "  login <profile>        Attempt to log in using the specified profile. If no profile is specified, uses AWS_PROFILE."
+    echo "  logout                 Log out of the current AWS SSO session."
+    echo "  config | credentials   Open the ~/.aws/ directory."
     echo ""
     echo "For more information on a specific command, use:"
     echo "  awsconfig <command> --help\n"
@@ -71,9 +101,14 @@ function awsconfig() {
     return 0
   fi
 
+  if [ "$command" = "logout" ]; then
+      aws sso logout
+      echo "Logged out."
+      return 0
+  fi
 
   if [ "$command" = "login" ]; then
-      
+      setopt LOCAL_OPTIONS NO_NOMATCH
       local temp_file=$(mktemp)
 
       if [ -z "$AWS_PROFILE" ] && [ "$#" -lt 2 ]; then
@@ -87,11 +122,24 @@ function awsconfig() {
 
       echo "Attempting to login using profile: [ $profile_name ]"
 
+      # Switch profiles to allow smooth transition with terragrunt
+      # and consistent cache key generation
+      profile_name=$terragrunt_login_profile
+
+      # Clear cache
+      if [[ -d ~/.aws/cli/cache ]]; then
+          /bin/rm -rf ~/.aws/cli/cache/
+      fi
+
+      if [[ -d ~/.aws/sso/cache ]]; then
+          /bin/rm -rf ~/.aws/sso/cache/
+      fi
+
       # Temporarily disable job control messages
       set +m
 
       # Run the command in the background and suppress all output, including job control messages.
-      { aws sso login --profile $profile_name &> $temp_file; } &
+      { aws sso login --profile $terragrunt_login_profile &> $temp_file; } &
 
       # Capture the PID of the background process.
       local bg_pid=$!
@@ -135,6 +183,17 @@ function awsconfig() {
 
       return 0
   fi
+
+  if [ "$command" = "config" ]; then
+      code ~/.aws/config
+      return 0
+  fi
+
+  if [ "$command" = "credentials" ]; then
+      code ~/.aws/credentials
+      return 0
+  fi
+
 
   if [ "$command" = "show" ]; then
       if [ "$#" -lt 2 ]; then
