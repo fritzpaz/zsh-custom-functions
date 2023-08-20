@@ -1,73 +1,8 @@
-# line_width=50
-
-# function check_aws_sso_session() {
-#   # Check AWS SSO session validity
-#   if aws sts get-caller-identity --output json >/dev/null 2>&1; then
-#     # Determine the size of our content
-#     content="\033[38;5;208m$AWS_PROFILE ❯\033[0m Active AWS SSO session."
-#     text_width=$((${#AWS_PROFILE} + 28))
-
-#     # Calculate padding
-#     padding=$((line_width - text_width))
-#     if ((padding % 2 == 0)); then
-#       padding=$((padding / 2))
-#     else
-#       padding=$(((padding) / 2))
-#       line_width=$((line_width - 1))
-#     fi
-
-#     # Generate the box
-#     echo -e "\033[1;36m┌$(printf '─%.0s' $(seq 1 $((line_width - 2))))┐\033[0m"
-#     echo -e "\033[1;36m│\033[0m$(printf ' %.0s' $(seq 1 $padding))$content$(printf ' %.0s' $(seq 1 $padding))\033[1;36m│\033[0m"
-#   else
-#     content="\033[38;5;208m$AWS_PROFILE ❯\033[0m Invalid AWS SSO session."
-#     text_width=$((${#AWS_PROFILE} + 28))
-
-#     # Calculate padding
-#     padding=$((line_width - text_width))
-#     if ((padding % 2 == 0)); then
-#       padding=$((padding / 2))
-#       line_width=$((line_width + 1))
-#     else
-#       padding=$(((padding) / 2))
-#     fi
-
-#     # Generate the box
-#     echo -e "\033[1;36m┌$(printf '─%.0s' $(seq 1 $((line_width - 2))))┐\033[0m"
-#     echo -e "\033[1;36m│\033[0m$(printf ' %.0s' $(seq 1 $padding))$content$(printf ' %.0s' $(seq 1 $padding))\033[1;36m│\033[0m"
-#   fi
-  
-#   echo -e "\033[1;36m└$(printf '─%.0s' $(seq 1 $((line_width - 2))))┘\033[0m"
-# }
-
-
-# function initialize_aws_profile() {
-#   local aws_credentials_file="$HOME/.aws/credentials"
-
-#   # Check if the default profile exists in the credentials file
-#   local is_default_exists=$(grep "^\[default\]" "$aws_credentials_file")
-
-#   if [ -n "$is_default_exists" ]; then
-#     # If default profile exists, then set AWS_PROFILE to "default".
-#     export AWS_PROFILE=default
-#   else
-#     # If default does not exist, then set AWS_PROFILE to the value in [last-sso]
-#     local last_sso_profile=$(grep -A1 "^\[last-sso\]" "$aws_credentials_file" | grep "profile_name" | cut -d '=' -f 2 | tr -d '[:space:]')
-#     if [ -n "$last_sso_profile" ]; then
-#       export AWS_PROFILE="$last_sso_profile"
-
-#       # Check if the AWS SSO session is active
-#       if ! check_aws_sso_session; then
-#         # If the session is not active, ask the user if they want to login
-#         echo -e "\033[1;36m│\033[0m ℹ️  Tip: Run \033[1;96mawsconfig login\033[0m to authenticate.  \033[1;36m│\033[0m"
-#         echo -e "\033[1;36m└────────────────────────────────────────────────┘\033[0m"
-#       fi
-#     else
-#       return 1
-#     fi
-#   fi
-# }
-
+CONFIG_FILE=".awsconfig_settings"
+# Load TARGET_CACHE_FILE from the configuration file if it exists.
+if [ -f "$(dirname "$0")/$CONFIG_FILE" ]; then
+  source "$(dirname "$0")/$CONFIG_FILE"
+fi
 
 function check_aws_sso_session() {
   # Check AWS SSO session validity
@@ -81,9 +16,6 @@ function check_aws_sso_session() {
     return 1
   fi
 }
-
-
-
 
 function initialize_aws_profile() {
   local aws_credentials_file="$HOME/.aws/credentials"
@@ -111,7 +43,6 @@ function initialize_aws_profile() {
     fi
   fi
 }
-
 
 function awsconfig() {
   local aws_credentials_file="$HOME/.aws/credentials"
@@ -226,6 +157,56 @@ function awsconfig() {
       set -m
 
       return 0
+  fi
+
+  # Check if $command is in $commands list
+  if [ "$command" = "terragrunt" ] || [ "$command" = "terraform" ] || [ "$command" = "tf" ] || [ "$command" = "tg" ] || [ "$command" = "cache" ]; then
+
+      # If there's a second argument after the command
+      if [ "$#" -ge 2 ]; then
+          echo "Do you want to set '$2' as the new value for TARGET_CACHE_FILE? (yes/no)"
+          read answer
+
+          if [ "$answer" = "yes" ]; then
+              # Set the new value and write it to the config file
+              TARGET_CACHE_FILE="$2"
+              echo "TARGET_CACHE_FILE=\"$TARGET_CACHE_FILE\"" > "$CONFIG_FILE"
+              echo "Updated TARGET_CACHE_FILE to $TARGET_CACHE_FILE in $CONFIG_FILE"
+          else
+              echo "Aborted. TARGET_CACHE_FILE = $TARGET_CACHE_FILE"
+          fi
+          return 0
+      fi
+
+      # Directory where the cache files are stored
+      CACHE_DIR=~/.aws/sso/cache/
+
+      # Identify the most recent cache file
+      latest_cache_file=$(ls -t $CACHE_DIR | head -1)
+
+      # Ensure we found a file
+      if [[ -z "$latest_cache_file" ]]; then
+          echo "No cache files found."
+          return 1
+      fi
+
+      # Make sure latest cache file is not equal to target cache file
+      if [[ "$latest_cache_file" == "$TARGET_CACHE_FILE" ]]; then
+          echo "Cache file is already set to $TARGET_CACHE_FILE"
+          return 0
+      fi
+
+      # Rename the most recent cache file
+      mv "${CACHE_DIR}${latest_cache_file}" "${CACHE_DIR}$TARGET_CACHE_FILE"
+
+      # Verify if the operation was successful
+      if [[ $? -eq 0 ]]; then
+          echo "Renamed ${latest_cache_file} to ${TARGET_CACHE_FILE} successfully."
+          return 0
+      else
+          echo "Failed to rename the cache file."
+          return 1
+      fi
   fi
 
   if [ "$command" = "config" ]; then
