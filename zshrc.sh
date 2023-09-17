@@ -65,7 +65,22 @@ zshrc() {
           printf "\r${COLOR_BLUE}[${COLOR_RESET}${COLOR_GREEN}%s${COLOR_BLUE}]${COLOR_RESET}${COLOR_GREEN} %3d%%${COLOR_RESET}" "$bar" "$percent"
       done
       ;;
+    "time")
+      old_time_seconds=$(date +%s)
+      old_time_24hr_format=$(date "+%H:%M:%S")
 
+      sudo hwclock -s
+      sudo service ntp stop
+      sudo service ntp start
+      sudo ntpd -gq > /dev/null 2>&1
+
+      new_time_seconds=$(date +%s)
+      new_time_24hr_format=$(date "+%H:%M:%S")
+
+      time_diff=$((new_time_seconds - old_time_seconds))
+
+      echo "Old Time: ${old_time_24hr_format}. New Time: ${new_time_24hr_format}. Time difference: ${time_diff} seconds"
+      ;;
     "cd")
       local target=${2:-""}
       case "$target" in

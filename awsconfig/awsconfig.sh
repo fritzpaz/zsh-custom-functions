@@ -56,6 +56,7 @@ function awsconfig() {
     echo "  <profile>              Set the default AWS profile to the specified IAM or SSO profile name."
     echo "  list                   List available AWS IAM and SSO profiles."
     echo "  show <profile>         Display details for a specified IAM or SSO profile."
+    echo "  region <profile> <region_name>"
     echo "  login <profile>        Attempt to log in using the specified profile. If no profile is specified, uses AWS_PROFILE."
     echo "  logout                 Log out of the current AWS SSO session."
     echo "  config | credentials   Open the ~/.aws/ directory."
@@ -144,10 +145,11 @@ function awsconfig() {
       wait $bg_pid
 
       if [ $? -eq 0 ]; then
-          echo "Login successful!\n"
+          echo "Login successful!"
+          awsconfig cache >/dev/null 2>&1
       else
           echo "Login failed. Use command:"
-          echo "aws sso login --profile $profile_name\n"
+          echo "aws sso login --profile $profile_name"
       fi
 
       # Cleanup the temporary file.
@@ -192,19 +194,19 @@ function awsconfig() {
 
       # Make sure latest cache file is not equal to target cache file
       if [[ "$latest_cache_file" == "$TARGET_CACHE_FILE" ]]; then
-          echo "Cache file is already set to $TARGET_CACHE_FILE"
+          echo "Cache file has already been copied to $TARGET_CACHE_FILE"
           return 0
       fi
 
-      # Rename the most recent cache file
-      mv "${CACHE_DIR}${latest_cache_file}" "${CACHE_DIR}$TARGET_CACHE_FILE"
+      # Copy the most recent cache file to target cache file
+      cp "${CACHE_DIR}${latest_cache_file}" "${CACHE_DIR}$TARGET_CACHE_FILE"
 
       # Verify if the operation was successful
       if [[ $? -eq 0 ]]; then
-          echo "Renamed ${latest_cache_file} to ${TARGET_CACHE_FILE} successfully."
+          echo "Copied ${latest_cache_file} to ${TARGET_CACHE_FILE} successfully."
           return 0
       else
-          echo "Failed to rename the cache file."
+          echo "Failed to copy the cache file."
           return 1
       fi
   fi
@@ -219,6 +221,63 @@ function awsconfig() {
       return 0
   fi
 
+  if [ "$command" = "region" ]; then
+      if [ "$#" -lt 3 ]; then
+          echo "Usage: awsconfig region 'AWS_PROFILE' <region_name>"
+          return 1
+      fi
+
+      local profile_name=$2
+      local new_region=$3
+
+      if grep -q "\[profile $profile_name\]" $aws_config_file; then
+          # Use awk to process the config file
+          awk -v profile="profile $profile_name" -v region="region = $new_region" '
+          {
+              if ($0 ~ /^\[profile / && f) {
+                  f=0
+              }
+              if (f && $0 ~ /^region = /) {
+                  next
+              }
+              print $0
+              if (f && $0 ~ /sso_role_name = /) {
+                  print region
+                  next
+              }
+              if ($0 ~ "^\\[" profile "\\]") {
+                  f=1
+              }
+          }' $aws_config_file > tmpfile && mv tmpfile $aws_config_file
+
+          echo "Region updated for SSO profile [ $profile_name ] to [ $new_region ]."
+      elif grep -q "\[$profile_name\]" $aws_credentials_file; then
+          # Use awk to process the credentials file
+          awk -v profile="$profile_name" -v region="region = $new_region" '
+          {
+              if ($0 ~ /^\[/ && f) {
+                  f=0
+              }
+              if (f && $0 ~ /^region\s*=/) {
+                  next
+              }
+              print $0
+              if (f && $0 ~ /aws_secret_access_key=/) {
+                  print region
+                  next
+              }
+              if ($0 ~ "^\\[" profile "\\]") {
+                  f=1
+              }
+          }' $aws_credentials_file > tmpfile && mv tmpfile $aws_credentials_file
+          echo "Region updated for IAM profile [ $profile_name ] to [ $new_region ]."
+      else
+          echo "Profile [ $profile_name ] not found."
+          return 1
+      fi
+
+      return 0
+  fi
 
   if [ "$command" = "show" ]; then
       if [ "$#" -lt 2 ]; then

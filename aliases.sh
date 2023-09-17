@@ -8,3 +8,7 @@ alias passwords="bitwarden"
 
 # GPT
 alias gpt="windows_chrome \"\" \"https://chat.openai.com/?model=gpt-4\""
+
+# Terraform/Terragrunt
+alias tf="terraform"
+alias tg="terragrunt"
