@@ -230,7 +230,7 @@ function awsconfig() {
       local profile_name=$2
       local new_region=$3
 
-      if grep -q "\[profile $profile_name\]" $aws_config_file; then
+      if grep -q "^\[profile $profile_name\]" $aws_config_file; then
           # Use awk to process the config file
           awk -v profile="profile $profile_name" -v region="region = $new_region" '
           {
@@ -275,7 +275,6 @@ function awsconfig() {
           echo "Profile [ $profile_name ] not found."
           return 1
       fi
-
       return 0
   fi
 
